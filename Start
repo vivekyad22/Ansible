@@ -1,0 +1,174 @@
+# Ansible
+
+http://www.tecmint.com/install-and-configure-ansible-automation-tool-in-linux/
+
+
+---
+- hosts: webservers
+  vars:
+    http_port: 80
+    max_clients: 200
+  remote_user: root
+  tasks:
+  - name: ensure apache is at the latest version
+    yum: pkg=httpd state=latest
+  - name: replace default index.html file
+    copy: src=/static_files/index.html dest=/var/www/html/ mode=0644
+    notify:
+    - restart apache
+  - name: ensure apache is running (and enable it at boot)
+    service: name=httpd state=started enabled=yes
+  handlers:
+    - name: restart apache
+      service: name=httpd state=restarted
+
+
+# ansible-playbook /etc/ansible/playbooks/apache.yml
+
+
+DEPLOY WP USING ANSIBLE
+----------------------------------------------------------------------------------------------------
+Ansible comes with an utility called ansible-galaxy that will help us to create the directory structure for our roles. We will do this in /etc/ansible/playbooks (which we created in Part 2) but in theory you can set it up in another directory if you want.
+
+# cd /etc/ansible/playbooks
+# ansible-galaxy init wp-dependencies
+# ansible-galaxy init wp-install-config
+
+In the above image we can see that ansible-galaxy created two directories with the same name as our roles, and other subdirectories (defaults, files, handlers, meta, tasks, templates, and vars) and a README.md file inside each of them.
+
+
+1. /etc/ansible/playbooks/wp-dependencies/tasks/main.yml. Note that we are including httpd in case you have not followed along with the previous tutorials of this series.
+
+main.yml
+---
+# tasks file for wp-dependencies
+- name: Update packages (this is equivalent to yum update -y)
+  yum: name=* state=latest
+
+- name: Install dependencies for WordPress
+  yum: name={{ item }} state=present
+  with_items:
+        - httpd
+        - mariadb-server 
+        - mariadb
+        - php 
+        - php-mysql
+        - MySQL-python
+
+- name: Ensure MariaDB is running (and enable it at boot)
+  service: name=mariadb state=started enabled=yes
+
+- name: Copy ~/.my.cnf to nodes
+  copy: src=/root/.my.cnf dest=/root/.my.cnf
+
+- name: Create MariaDB database
+  mysql_db: name={{ wp_mysql_db }} state=present
+
+- name: Create MariaDB username and password
+  mysql_user:
+        login_user=root
+        login_password=YourMariaDBRootPasswordHere
+        name={{ wp_mysql_user }}
+        password={{ wp_mysql_password }}
+        priv=*.*:ALL
+
+
+
+2. /etc/ansible/playbooks/wp-dependencies/defaults/main.yml
+
+main.yml
+---
+# defaults file for wp-dependencies
+  wp_mysql_db: MyWP
+  wp_mysql_user: wpUser
+  wp_mysql_password: wpP4ss
+'
+
+3. /etc/ansible/playbooks/wp-install-config/tasks/main.yml:
+
+main.yml
+---
+# tasks file for wp-install-config
+- name: Create directory to download WordPress
+  command: mkdir -p /opt/source/wordpress
+
+- name: Download WordPress
+  get_url: url=https://www.wordpress.org/latest.tar.gz dest=/opt/source/wordpress/wordpress.tar.gz validate_certs=no
+
+- name: Extract WordPress
+  command: "tar xzf /opt/source/wordpress/wordpress.tar.gz -C /var/www/html --strip-components 1"
+
+- name: Send config file
+  copy: src=/root/wp-config-sample.php dest=/var/www/html/wp-config.php mode=0644
+
+
+WORDPRESS DEPLOYED
+**************************************************
+
+
+
+
+
+
+VAGRANT
+-----------------------------------------------------------------------------------------------------------------------------
+https://www.digitalocean.com/community/tutorials/how-to-install-vagrant-on-a-vps-running-ubuntu-12-04
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
